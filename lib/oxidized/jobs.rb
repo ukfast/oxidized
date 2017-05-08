@@ -6,7 +6,9 @@ module Oxidized
 
     def initialize max, interval, nodes
       @max       = max
-      @interval  = interval
+      # Set interval to 1 if interval is 0 (=disabled) so we don't break 
+      # the 'ceil' function
+      @interval  = interval == 0 ? 1 : interval
       @nodes     = nodes
       @last      = Time.now.utc
       @durations = Array.new @nodes.size, AVERAGE_DURATION
@@ -20,13 +22,18 @@ module Oxidized
     end
 
     def duration last
+      if @durations.size > @nodes.size
+        @durations.slice! @nodes.size...@durations.size
+      elsif @durations.size < @nodes.size
+        @durations.fill AVERAGE_DURATION, @durations.size...@nodes.size
+      end
       @durations.push(last).shift
       @duration = @durations.inject(:+).to_f / @nodes.size #rolling average
       new_count
     end
 
     def new_count
-      @want = ((@nodes.size * @duration) / @interval).to_i
+      @want = ((@nodes.size * @duration) / @interval).ceil
       @want = 1 if @want < 1
       @want = @nodes.size if @want > @nodes.size
       @want = @max if @want > @max

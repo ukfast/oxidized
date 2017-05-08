@@ -23,10 +23,6 @@ class CiscoSMB < Oxidized::Model
     comment cfg
   end
 
-  cmd 'show inventory' do |cfg|
-    comment cfg
-  end
-
   cmd 'show running-config' do |cfg|
     cfg = cfg.each_line.to_a[0..-1].join
     cfg.gsub! /^Current configuration : [^\n]*\n/, ''
@@ -38,10 +34,12 @@ class CiscoSMB < Oxidized::Model
   end
 
   cfg :telnet, :ssh do
-    username /^User Name:/
+    username /^User ?[nN]ame:/
     password /^\r?Password:$/
     post_login 'terminal datadump' # Disable pager
     post_login 'terminal width 0'
+    post_login 'terminal len 0'
+    pre_logout 'exit' #exit returns to previous priv level, no way to quit from exec(#)
     pre_logout 'exit'
   end
 

@@ -1,16 +1,17 @@
 module Oxidized
- require 'ipaddr'
- require 'oxidized/node'
- class Oxidized::NotSupported < OxidizedError; end
- class Oxidized::NodeNotFound < OxidizedError; end
+  require 'ipaddr'
+  require 'oxidized/node'
+  class Oxidized::NotSupported < OxidizedError; end
+  class Oxidized::NodeNotFound < OxidizedError; end
   class Nodes < Array
-    attr_accessor :source
+    attr_accessor :source, :jobs
     alias :put :unshift
     def load node_want=nil
       with_lock do
         new = []
-        @source = CFG.source.default
+        @source = Oxidized.config.source.default
         Oxidized.mgr.add_source @source
+        Oxidized.logger.info "lib/oxidized/nodes.rb: Loading nodes"
         Oxidized.mgr.source[@source].new.load.each do |node|
           # we want to load specific node(s), not all of them
           next unless node_want? node_want, node
@@ -18,13 +19,13 @@ module Oxidized
             _node = Node.new node
             new.push _node
           rescue ModelNotFound => err
-            Log.error "node %s raised %s with message '%s'" % [node, err.class, err.message]
+            Oxidized.logger.error "node %s raised %s with message '%s'" % [node, err.class, err.message]
           rescue Resolv::ResolvError => err
-            Log.error "node %s is not resolvable, raised %s with message '%s'" % [node, err.class, err.message]
+            Oxidized.logger.error "node %s is not resolvable, raised %s with message '%s'" % [node, err.class, err.message]
           end
         end
         size == 0 ? replace(new) : update_nodes(new)
-	Log.info "Loaded #{size} nodes"
+        Oxidized.logger.info "lib/oxidized/nodes.rb: Loaded #{size} nodes"
       end
     end
 
@@ -55,11 +56,8 @@ module Oxidized
       end
     end
 
-    def fetch node, group
-      with_lock do
-        i = find_node_index node
-        output = self[i].output.new
-        raise Oxidized::NotSupported unless output.respond_to? :fetch
+    def fetch node_name, group
+      yield_node_output(node_name) do |node, output|
         output.fetch node, group
       end
     end
@@ -75,6 +73,7 @@ module Oxidized
           # set last job to nil so that the node is picked for immediate update
           n.last = nil
           put n
+          jobs.want += 1 if Oxidized.config.next_adds_job?
         end
       end
     end
@@ -91,6 +90,24 @@ module Oxidized
     # @return [Fixnum] index number of node in Nodes
     def find_node_index node
       find_index node or raise Oxidized::NodeNotFound, "unable to find '#{node}'"
+    end
+
+    def version node_name, group
+      yield_node_output(node_name) do |node, output|
+        output.version node, group
+      end
+    end
+
+    def get_version node_name, group, oid
+      yield_node_output(node_name) do |node, output|
+        output.get_version node, group, oid
+      end
+    end
+
+    def get_diff node_name, group, oid1, oid2
+      yield_node_output(node_name) do |node, output|
+        output.get_diff node, group, oid1, oid2
+      end
     end
 
     private
@@ -111,7 +128,7 @@ module Oxidized
     end
 
     def find_index node
-      index { |e| e.name == node }
+      index { |e| e.name == node or e.ip == node}
     end
 
     # @param node node which is removed from nodes list
@@ -147,7 +164,16 @@ module Oxidized
         rescue  Oxidized::NodeNotFound
         end
       end
+      sort_by! { |x| x.last.nil? ? Time.new(0) : x.last.end }
     end
 
+    def yield_node_output(node_name)
+      with_lock do
+        node = find { |n| n.name == node_name }
+        output = node.output.new
+        raise Oxidized::NotSupported unless output.respond_to? :fetch
+        yield node, output
+      end
+    end
   end
 end

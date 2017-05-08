@@ -11,7 +11,8 @@ module Oxidized
         klass.instance_variable_set '@cfg',   Hash.new { |h,k| h[k] = [] }
         klass.instance_variable_set '@procs', Hash.new { |h,k| h[k] = [] }
         klass.instance_variable_set '@expect', []
-        klass.const_set :CFG, CFG
+        klass.instance_variable_set '@comment', nil
+        klass.instance_variable_set '@prompt', nil
       end
       def comment _comment='# '
         return @comment if @comment
@@ -34,6 +35,7 @@ module Oxidized
         else
           @cmd[:cmd] << [_cmd, block]
         end
+        Oxidized.logger.debug "lib/oxidized/model/model.rb Added #{_cmd} to the commands list"
       end
       def cmds
         @cmd
@@ -78,7 +80,8 @@ module Oxidized
     attr_accessor :input, :node
 
     def cmd string, &block
-      out = @input.cmd string
+      Oxidized.logger.debug "lib/oxidized/model/model.rb Executing #{string}"
+      out = @input.cmd(string)
       return false unless out
       self.class.cmds[:all].each do |all_block|
         out = instance_exec Oxidized::String.new(out), string, &all_block
@@ -126,6 +129,7 @@ module Oxidized
     end
 
     def get
+      Oxidized.logger.debug 'lib/oxidized/model/model.rb Collecting commands\' outputs'
       outputs = Outputs.new
       procs = self.class.procs
       self.class.cmds[:cmd].each do |command, block|
@@ -148,6 +152,10 @@ module Oxidized
         data << self.class.comment << line
       end
       data
+    end
+
+    def screenscrape
+      @input.class.to_s.match(/Telnet/) || vars(:ssh_no_exec)
     end
 
     private

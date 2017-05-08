@@ -22,18 +22,18 @@ class NOS < Oxidized::Model
   end
 
   cmd 'show chassis' do |cfg|
-    comment cfg.each_line.reject { |line| line.match /Time/ }.join
+    comment cfg.each_line.reject { |line| line.match /Time/ or line.match /Update/ }.join
   end
 
   cfg 'show system' do |cfg|
-    commen cfg.each_line.reject { |line| line.match /Time/ or line.match /speed/ }
+    comment cfg.each_line.reject { |line| line.match /Time/ or line.match /speed/ }
   end
 
-  cmd 'show running-config'
+  cmd 'show running-config | nomore'
 
   cfg :telnet do
     username /^.* login: /
-    username /^Password:/
+    password /^Password:/
   end
 
   cfg :telnet, :ssh do

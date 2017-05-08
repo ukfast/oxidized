@@ -8,12 +8,12 @@ class SQL < Source
 
   def setup
     if @cfg.empty?
-      CFGS.user.source.sql.adapter   = 'sqlite'
-      CFGS.user.source.sql.database  = File.join(Config::Root, 'sqlite.db')
-      CFGS.user.source.sql.table     = 'devices'
-      CFGS.user.source.sql.map.name  = 'name'
-      CFGS.user.source.sql.map.model = 'rancid'
-      CFGS.save :user
+      Oxidized.asetus.user.source.sql.adapter   = 'sqlite'
+      Oxidized.asetus.user.source.sql.database  = File.join(Config::Root, 'sqlite.db')
+      Oxidized.asetus.user.source.sql.table     = 'devices'
+      Oxidized.asetus.user.source.sql.map.name  = 'name'
+      Oxidized.asetus.user.source.sql.map.model = 'rancid'
+      Oxidized.asetus.save :user
       raise NoConfig, 'no source sql config, edit ~/.config/oxidized/config'
     end
   end
@@ -26,12 +26,14 @@ class SQL < Source
     query.each do |node|
       # map node parameters
       keys = {}
-      @cfg.map.each { |key, sql_column| keys[key.to_sym] = node[sql_column.to_sym] }
+      @cfg.map.each { |key, sql_column| keys[key.to_sym] = node_var_interpolate node[sql_column.to_sym] }
       keys[:model] = map_model keys[:model] if keys.key? :model
 
       # map node specific vars
       vars = {}
-      @cfg.vars_map.each { |key, sql_column| vars[key.to_sym] = node[sql_column.to_sym] }
+      @cfg.vars_map.each do |key, sql_column|
+        vars[key.to_sym] = node_var_interpolate node[sql_column.to_sym]
+      end
       keys[:vars] = vars unless vars.empty?
 
       nodes << keys
@@ -44,7 +46,7 @@ class SQL < Source
 
   def initialize
     super
-    @cfg = CFG.source.sql
+    @cfg = Oxidized.config.source.sql
   end
 
   def connect

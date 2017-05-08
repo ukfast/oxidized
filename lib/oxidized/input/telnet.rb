@@ -8,16 +8,21 @@ module Oxidized
 
     def connect node
       @node    = node
-      @timeout = CFG.timeout
+      @timeout = Oxidized.config.timeout
       @node.model.cfg['telnet'].each { |cb| instance_exec(&cb) }
+      port = vars(:telnet_port) || 23
 
-      opt = { 'Host' => @node.ip, 'Timeout' => @timeout,
-              'Model' => @node.model }
-      opt['Output_log'] = CFG.input.debug?.to_s + '-telnet' if CFG.input.debug?
+      opt = { 'Host'    => @node.ip,
+              'Port'    => port.to_i,
+              'Timeout' => @timeout,
+              'Model'   => @node.model }
+      opt['Output_log'] = Oxidized::Config::Log + "/#{@node.ip}-telnet" if Oxidized.config.input.debug?
 
       @telnet  = Net::Telnet.new opt
-      expect username
-      @telnet.puts @node.auth[:username]
+      if @node.auth[:username] and @node.auth[:username].length > 0
+        expect username
+        @telnet.puts @node.auth[:username]
+      end
       expect password
       @telnet.puts @node.auth[:password]
       begin
@@ -32,7 +37,7 @@ module Oxidized
     end
 
     def cmd cmd, expect=@node.prompt
-      Log.debug "Telnet: #{cmd} @#{@node.name}"
+      Oxidized.logger.debug "Telnet: #{cmd} @#{@node.name}"
       args = { 'String' => cmd }
       args.merge!({ 'Match' => expect, 'Timeout' => @timeout }) if expect
       @telnet.cmd args

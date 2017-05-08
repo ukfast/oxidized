@@ -3,25 +3,25 @@ class JunOS < Oxidized::Model
   comment  '# '
 
   def telnet
-    @input.class.to_s.match /Telnet/
+    @input.class.to_s.match(/Telnet/)
   end
 
   cmd :all do |cfg|
-    # we don't need screen-scraping in ssh due to exec
-    cfg = cfg.lines.to_a[1..-2].join if telnet
-    cfg.lines.map { |line| line.rstrip }.join "\n"
+    cfg = cfg.lines.to_a[1..-2].join if screenscrape
+    cfg.gsub!(/  scale-subscriber (\s+)(\d+)/,'  scale-subscriber                <count>')
+    cfg.lines.map { |line| line.rstrip }.join("\n") + "\n"
   end
 
-  cmd :secret do |cfg| 
-    cfg.gsub! /encrypted-password (\S+).*/, '<secret removed>'
-    cfg.gsub! /community (\S+) {/, 'community <hidden> {'
+  cmd :secret do |cfg|
+    cfg.gsub!(/encrypted-password (\S+).*/, '<secret removed>')
+    cfg.gsub!(/community (\S+) {/, 'community <hidden> {')
     cfg
   end
 
   cmd 'show configuration | display omit'
 
   cmd 'show version' do |cfg|
-    @model = $1 if cfg.match /^Model: (\S+)/
+    @model = $1 if cfg.match(/^Model: (\S+)/)
     comment cfg
   end
 
@@ -30,17 +30,19 @@ class JunOS < Oxidized::Model
     case @model
     when 'mx960'
       out << cmd('show chassis fabric reachability')  { |cfg| comment cfg }
+    when /^(ex22|ex33|ex4|ex8|qfx)/
+      out << cmd('show virtual-chassis') { |cfg| comment cfg }
     end
     out
   end
 
-  cmd 'show chassis hardware' do |cfg|
-    comment cfg
-  end
+  cmd('show chassis hardware') { |cfg| comment cfg }
+  cmd('show system license') { |cfg| comment cfg }
+  cmd('show system license keys') { |cfg| comment cfg }
 
   cfg :telnet do
-    username  /^login:/
-    password  /^Password:/
+    username(/^login:/)
+    password(/^Password:/)
   end
 
   cfg :ssh do

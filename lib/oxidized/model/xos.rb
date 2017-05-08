@@ -6,7 +6,9 @@ class XOS < Oxidized::Model
   comment  '# '
 
   cmd :all do |cfg|
-    cfg.each_line.to_a[1..-2].join.rstrip
+    # xos inserts leading \r characters and other trailing white space.
+    # this deletes extraneous \r and trailing white space.
+    cfg.each_line.to_a[1..-2].map{|line|line.delete("\r").rstrip}.join("\n") + "\n"
   end
 
   cmd 'show version' do |cfg|
@@ -34,7 +36,10 @@ class XOS < Oxidized::Model
 
   cfg :telnet, :ssh do
     post_login 'disable clipaging'
-    pre_logout 'exit'
+    pre_logout do
+      send "exit\n"
+      send "n\n"
+    end
   end
 
 end

@@ -5,12 +5,16 @@ module Oxidized
   class MethodNotFound < OxidizedError; end
   class ModelNotFound  < OxidizedError; end
   class Node
-    attr_reader :name, :ip, :model, :input, :output, :group, :auth, :prompt, :vars, :last
+    attr_reader :name, :ip, :model, :input, :output, :group, :auth, :prompt, :vars, :last, :repo
     attr_accessor :running, :user, :msg, :from, :stats, :retry
     alias :running? :running
     def initialize opt
+      Oxidized.logger.debug 'resolving DNS for %s...' % opt[:name]
+      # remove the prefix if an IP Address is provided with one as IPAddr converts it to a network address.
+      ip_addr, _ = opt[:ip].to_s.split("/")
+      Oxidized.logger.debug 'IPADDR %s' % ip_addr.to_s
       @name           = opt[:name]
-      @ip             = IPAddr.new(opt[:ip]).to_s rescue nil
+      @ip             = IPAddr.new(ip_addr).to_s rescue nil
       @ip           ||= Resolv.new.getaddress @name
       @group          = opt[:group]
       @input          = resolve_input opt
@@ -21,6 +25,7 @@ module Oxidized
       @vars           = opt[:vars]
       @stats          = Stats.new
       @retry          = 0
+      @repo           = resolve_repo opt
 
       # model instance needs to access node instance
       @model.node = self
@@ -29,11 +34,16 @@ module Oxidized
     def run
       status, config = :fail, nil
       @input.each do |input|
+        # don't try input if model is missing config block, we may need strong config to class_name map
+        cfg_name = input.to_s.split('::').last.downcase
+        next unless @model.cfg[cfg_name] and not @model.cfg[cfg_name].empty?
         @model.input = input = input.new
         if config=run_input(input)
+          Oxidized.logger.debug "lib/oxidized/node.rb: #{input.class.name} ran for #{name} successfully"
           status = :success
           break
         else
+          Oxidized.logger.debug "lib/oxidized/node.rb: #{input.class.name} failed for #{name}"
           status = :no_connection
         end
       end
@@ -51,9 +61,7 @@ module Oxidized
         end
       end
       begin
-        if input.connect self
-          input.get
-        end
+        input.connect(self) and input.get
       rescue *rescue_fail.keys => err
         resc  = ''
         if not level = rescue_fail[err.class]
@@ -61,7 +69,7 @@ module Oxidized
           level = rescue_fail[resc]
           resc  = " (rescued #{resc})"
         end
-        Log.send(level, '%s raised %s%s with msg "%s"' % [self.ip, err.class, resc, err.message])
+        Oxidized.logger.send(level, '%s raised %s%s with msg "%s"' % [self.ip, err.class, resc, err.message])
         return false
       rescue => err
         file = Oxidized::Config::Crash + '.' + self.ip.to_s
@@ -71,7 +79,7 @@ module Oxidized
           fh.puts '-' * 50
           fh.puts err.backtrace
         end
-        Log.error '%s raised %s with msg "%s", %s saved' % [self.ip, err.class, err.message, file]
+        Oxidized.logger.error '%s raised %s with msg "%s", %s saved' % [self.ip, err.class, err.message, file]
         return false
       end
     end
@@ -119,30 +127,19 @@ module Oxidized
     private
 
     def resolve_prompt opt
-      prompt =   opt[:prompt]
-      prompt ||= @model.prompt
-      prompt ||= CFG.prompt
+      opt[:prompt] || @model.prompt || Oxidized.config.prompt
     end
 
     def resolve_auth opt
-      # Resolve configured username/password, give priority to group level configuration
-      # TODO: refactor to use revised behaviour of Asetus
-      cfg_username, cfg_password =
-        if CFG.groups.has_key?(@group) and ['username', 'password'].all? {|e| CFG.groups[@group].has_key?(e)}
-          [CFG.groups[@group].username, CFG.groups[@group].password]
-        elsif ['username', 'password'].all? {|e| CFG.has_key?(e)}
-          [CFG.username, CFG.password]
-        else
-          [nil, nil]
-        end
-      auth = {}
-      auth[:username] = (opt[:username] or cfg_username)
-      auth[:password] = (opt[:password] or cfg_password)
-      auth
+      # Resolve configured username/password
+      {
+        username:       resolve_key(:username, opt),
+        password:       resolve_key(:password, opt),
+      }
     end
 
     def resolve_input opt
-      inputs = (opt[:input]  or CFG.input.default)
+      inputs = resolve_key :input, opt, Oxidized.config.input.default
       inputs.split(/\s*,\s*/).map do |input|
         if not Oxidized.mgr.input[input]
           Oxidized.mgr.add_input input or raise MethodNotFound, "#{input} not found for node #{ip}"
@@ -152,7 +149,7 @@ module Oxidized
     end
 
     def resolve_output opt
-      output = (opt[:output] or CFG.output.default)
+      output = resolve_key :output, opt, Oxidized.config.output.default
       if not Oxidized.mgr.output[output]
         Oxidized.mgr.add_output output or raise MethodNotFound, "#{output} not found for node #{ip}"
       end
@@ -160,11 +157,85 @@ module Oxidized
     end
 
     def resolve_model opt
-      model = (opt[:model] or CFG.model)
+      model = resolve_key :model, opt
       if not Oxidized.mgr.model[model]
+        Oxidized.logger.debug "lib/oxidized/node.rb: Loading model #{model.inspect}"
         Oxidized.mgr.add_model model or raise ModelNotFound, "#{model} not found for node #{ip}"
       end
       Oxidized.mgr.model[model].new
+    end
+
+    def resolve_repo opt
+      if is_git? opt
+        remote_repo = Oxidized.config.output.git.repo
+
+        if remote_repo.is_a?(::String)
+          if Oxidized.config.output.git.single_repo? || @group.nil?
+            remote_repo
+          else
+            File.join(File.dirname(remote_repo), @group + '.git')
+          end
+        else
+          remote_repo[@group]
+        end
+      elsif is_gitcrypt? opt
+        remote_repo = Oxidized.config.output.gitcrypt.repo
+
+        if remote_repo.is_a?(::String)
+          if Oxidized.config.output.gitcrypt.single_repo? || @group.nil?
+            remote_repo
+          else
+            File.join(File.dirname(remote_repo), @group + '.git')
+          end
+        else
+          remote_repo[@group]
+        end
+      else
+        return
+      end
+    end
+
+    def resolve_key key, opt, global=nil
+      # resolve key, first get global, then get group then get node config
+      key_sym = key.to_sym
+      key_str = key.to_s
+      value   = global
+      Oxidized.logger.debug "node.rb: resolving node key '#{key}', with passed global value of '#{value}' and node value '#{opt[key_sym]}'"
+
+      #global
+      if not value and Oxidized.config.has_key?(key_str)
+        value = Oxidized.config[key_str]
+        Oxidized.logger.debug "node.rb: setting node key '#{key}' to value '#{value}' from global"
+      end
+
+      #group
+      if Oxidized.config.groups.has_key?(@group)
+        if Oxidized.config.groups[@group].has_key?(key_str)
+          value = Oxidized.config.groups[@group][key_str]
+          Oxidized.logger.debug "node.rb: setting node key '#{key}' to value '#{value}' from group"
+        end
+      end
+
+      #model
+      if Oxidized.config.models.has_key?(@model.class.name.to_s.downcase)
+        if Oxidized.config.models[@model.class.name.to_s.downcase].has_key?(key_str)
+          value = Oxidized.config.models[@model.class.name.to_s.downcase][key_str]
+          Oxidized.logger.debug "node.rb: setting node key '#{key}' to value '#{value}' from model"
+        end
+      end
+
+      #node
+      value = opt[key_sym] || value
+      Oxidized.logger.debug "node.rb: returning node key '#{key}' with value '#{value}'"
+      value
+    end
+
+    def is_git? opt
+      (opt[:output] || Oxidized.config.output.default) == 'git'
+    end
+
+    def is_gitcrypt? opt
+      (opt[:output] || Oxidized.config.output.default) == 'gitcrypt'
     end
 
   end

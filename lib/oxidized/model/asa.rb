@@ -13,31 +13,50 @@ class ASA < Oxidized::Model
   cmd :secret do |cfg|
     cfg.gsub! /enable password (\S+) (.*)/, 'enable password <secret hidden> \2'
     cfg.gsub! /username (\S+) password (\S+) (.*)/, 'username \1 password <secret hidden> \3'
+    cfg.gsub! /(ikev[12] ((remote|local)-authentication )?pre-shared-key) (\S+)/, '\1 <secret hidden>'
+    cfg.gsub! /^(aaa-server TACACS\+? \(\S+\) host.*\n\skey) \S+$/mi, '\1 <secret hidden>'
+    cfg.gsub! /ldap-login-password (\S+)/, 'ldap-login-password <secret hidden>'
+    cfg.gsub! /^snmp-server host (.*) community (\S+)/, 'snmp-server host \1 community <secret hidden>'
     cfg
   end
 
   cmd 'show version' do |cfg|
     # avoid commits due to uptime / ixo-router01 up 2 mins 28 secs / ixo-router01 up 1 days 2 hours
-    cfg = cfg.each_line.select { |line| not line.match /\s+up\s+\d+\s+/ }
+    cfg = cfg.each_line.select { |line| not line.match /(\s+up\s+\d+\s+)|(.*days.*)/ }
     cfg = cfg.join
     comment cfg
-  end
-
-  cmd 'more system:running-config' do |cfg|
-    cfg = cfg.each_line.to_a[3..-1].join
-    cfg.gsub! /^: [^\n]*\n/, ''
-    cfg
   end
 
   cmd 'show inventory' do |cfg|
     comment cfg
   end
 
+  cmd 'more system:running-config' do |cfg|
+    cfg = cfg.each_line.to_a[3..-1].join
+    cfg.gsub! /^: [^\n]*\n/, ''
+    # backup any xml referenced in the configuration.
+    anyconnect_profiles = cfg.scan(Regexp.new('(\sdisk0:/.+\.xml)')).flatten
+    anyconnect_profiles.each do |profile|
+  	  cfg << (comment profile + "\n" )
+   	  cmd ("more" + profile) do |xml|
+	      cfg << (comment xml)
+	    end
+    end
+    # if DAP is enabled, also backup dap.xml
+    if cfg.rindex(/dynamic-access-policy-record\s(?!DfltAccessPolicy)/)
+   	  cfg << (comment "disk0:/dap.xml\n")
+      cmd "more disk0:/dap.xml" do |xml|
+        cfg << (comment xml)
+      end
+    end
+    cfg
+  end
+
   cfg :ssh do
     if vars :enable
       post_login do
         send "enable\n"
-        send vars(:enable) + "\n"
+        cmd vars(:enable)
       end
     end
     post_login 'terminal pager 0'

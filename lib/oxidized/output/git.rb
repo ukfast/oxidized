@@ -2,23 +2,32 @@ module Oxidized
 class Git < Output
   class GitError < OxidizedError; end
   begin
-    gem 'rugged', '~> 0.21.0'
     require 'rugged'
   rescue LoadError
     raise OxidizedError, 'rugged not found: sudo gem install rugged'
   end
 
+  attr_reader :commitref
+
   def initialize
-    @cfg = CFG.output.git
+    @cfg = Oxidized.config.output.git
   end
 
   def setup
     if @cfg.empty?
-      CFGS.user.output.git.user  = 'Oxidized'
-      CFGS.user.output.git.email = 'o@example.com'
-      CFGS.user.output.git.repo  =  File.join(Config::Root, 'oxidized.git')
-      CFGS.save :user
+      Oxidized.asetus.user.output.git.user  = 'Oxidized'
+      Oxidized.asetus.user.output.git.email = 'o@example.com'
+      Oxidized.asetus.user.output.git.repo  =  File.join(Config::Root, 'oxidized.git')
+      Oxidized.asetus.save :user
       raise NoConfig, 'no output git config, edit ~/.config/oxidized/config'
+    end
+
+    if @cfg.repo.respond_to?(:each)
+      @cfg.repo.each do |group, repo|
+        @cfg.repo["#{group}="] = File.expand_path repo
+      end
+    else
+      @cfg.repo = File.expand_path @cfg.repo
     end
   end
 
@@ -27,11 +36,12 @@ class Git < Output
     @user  = (opt[:user]  or @cfg.user)
     @email = (opt[:email] or @cfg.email)
     @opt   = opt
+    @commitref = nil
     repo   = @cfg.repo
 
     outputs.types.each do |type|
       type_cfg = ''
-      type_repo = File.join File.dirname(repo), type + '.git'
+      type_repo = File.join(File.dirname(repo), type + '.git')
       outputs.type(type).each do |output|
         (type_cfg << output; next) if not output.name
         type_file = file + '--' + output.name
@@ -50,30 +60,112 @@ class Git < Output
 
   def fetch node, group
     begin
-      repo = @cfg.repo
-      if group
-        repo = File.join File.dirname(repo), group + '.git'
-      end
+      repo, path = yield_repo_and_path(node, group)
       repo = Rugged::Repository.new repo
       index = repo.index
       index.read_tree repo.head.target.tree unless repo.empty?
-      repo.read(index.get(node)[:oid]).data
+      repo.read(index.get(path)[:oid]).data
     rescue
       'node not found'
     end
   end
 
+    # give a hash of all oid revision for the given node, and the date of the commit
+    def version node, group
+      begin
+        repo, path = yield_repo_and_path(node, group)
+
+        repo = Rugged::Repository.new repo
+        walker = Rugged::Walker.new(repo)
+        walker.sorting(Rugged::SORT_DATE)
+        walker.push(repo.head.target)
+        i = -1
+        tab  = []
+        walker.each do |commit|
+          if commit.diff(paths: [path]).size > 0
+            hash = {}
+            hash[:date] = commit.time.to_s
+            hash[:oid] = commit.oid
+            hash[:author] = commit.author
+            hash[:message] = commit.message
+            tab[i += 1] = hash
+          end
+        end
+        walker.reset
+        tab
+      rescue
+        'node not found'
+      end
+    end
+
+    #give the blob of a specific revision
+    def get_version node, group, oid
+      begin
+        repo, path = yield_repo_and_path(node, group)
+        repo = Rugged::Repository.new repo
+        repo.blob_at(oid,path).content
+      rescue
+        'version not found'
+      end
+    end
+
+    #give a hash with the patch of a diff between 2 revision and the stats (added and deleted lines)
+    def get_diff node, group, oid1, oid2
+      begin
+        diff_commits = nil
+        repo, _ = yield_repo_and_path(node, group)
+        repo = Rugged::Repository.new repo
+        commit = repo.lookup(oid1)
+
+        if oid2
+          commit_old = repo.lookup(oid2)
+          diff = repo.diff(commit_old, commit)
+          diff.each do |patch|
+            if /#{node.name}\s+/.match(patch.to_s.lines.first)
+              diff_commits = {:patch => patch.to_s, :stat => patch.stat}
+              break
+            end
+          end
+        else
+          stat = commit.parents[0].diff(commit).stat
+          stat = [stat[1],stat[2]]
+          patch = commit.parents[0].diff(commit).patch
+          diff_commits = {:patch => patch, :stat => stat}
+        end
+
+        diff_commits
+      rescue
+        'no diffs'
+      end
+    end
+
   private
+
+  def yield_repo_and_path(node, group)
+    repo, path = node.repo, node.name
+
+    if group and @cfg.single_repo?
+      path = "#{group}/#{node.name}"
+    end
+
+    [repo, path]
+  end
 
   def update repo, file, data
     return if data.empty?
+
     if @opt[:group]
       if @cfg.single_repo?
         file = File.join @opt[:group], file
       else
-        repo = File.join File.dirname(repo), @opt[:group] + '.git'
+        repo = if repo.is_a?(::String)
+                 File.join File.dirname(repo), @opt[:group] + '.git'
+               else
+                 repo[@opt[:group]]
+               end
       end
     end
+
     begin
       repo = Rugged::Repository.new repo
       update_repo repo, file, data, @msg, @user, @email
@@ -99,13 +191,15 @@ class Git < Output
     if tree_old != tree_new
       repo.config['user.name']  = user
       repo.config['user.email'] = email
-      Rugged::Commit.create(repo,
+      @commitref = Rugged::Commit.create(repo,
         :tree       => index.write_tree(repo),
         :message    => msg,
         :parents    => repo.empty? ? [] : [repo.head.target].compact,
         :update_ref => 'HEAD',
       )
+
       index.write
+      true
     end
   end
 end

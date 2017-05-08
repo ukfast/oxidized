@@ -1,6 +1,7 @@
 module Oxidized
   class Input
     module CLI
+      attr_reader :node
 
       def initialize
         @post_login = []
@@ -10,16 +11,24 @@ module Oxidized
 
       def get
         connect_cli
-        d = @node.model.get
+        d = node.model.get
         disconnect
         d
+      rescue PromptUndetect
+        disconnect
+        raise
       end
 
       def connect_cli
-        @post_login.each { |command, block| block ? block.call : (cmd command) }
+        Oxidized.logger.debug "lib/oxidized/input/cli.rb: Running post_login commands at #{node.name}"
+        @post_login.each do |command, block|
+          Oxidized.logger.debug "lib/oxidized/input/cli.rb: Running post_login command: #{command.inspect}, block: #{block.inspect} at #{node.name}"
+          block ? block.call : (cmd command)
+        end
       end
 
       def disconnect_cli
+        Oxidized.logger.debug "lib/oxidized/input/cli.rb Running pre_logout commands at #{node.name}"
         @pre_logout.each { |command, block| block ? block.call : (cmd command, nil) }
       end
 
