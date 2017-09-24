@@ -1,5 +1,9 @@
 # Oxidized [![Build Status](https://travis-ci.org/Shopify/oxidized.svg)](https://travis-ci.org/Shopify/oxidized) [![Gem Version](https://badge.fury.io/rb/oxidized.svg)](http://badge.fury.io/rb/oxidized) [![Join the chat at https://gitter.im/oxidized/Lobby](https://badges.gitter.im/oxidized/Lobby.svg)](https://gitter.im/oxidized/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+** Is your company using Oxidized and has Ruby developers on staff? I'd love help from an extra maintainer!**
+
+[WANTED: MAINTAINER](#help-needed)
+
 Oxidized is a network device configuration backup tool. It's a RANCID replacement!
 
 * automatically adds/removes threads to meet configured retrieval interval
@@ -51,10 +55,13 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
 
  * A10 Networks
    * [ACOS](lib/oxidized/model/acos.rb)
+ * Accedian Performance Elements (NIDs)
+   * [AEN](lib/oxidized/model/aen.rb)
  * Alcatel-Lucent
    * [AOS](lib/oxidized/model/aos.rb)
    * [AOS7](lib/oxidized/model/aos7.rb)
    * [ISAM](lib/oxidized/model/isam.rb)
+   * [SR OS (Formerly TiMOS)](lib/oxidized/model/timos.rb)
    * Wireless
  * Alvarion
    * [BreezeACCESS](lib/oxidized/model/alvarion.rb)
@@ -66,6 +73,11 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
    * [C4CMTS](lib/oxidized/model/c4cmts.rb)
  * Aruba
    * [AOSW](lib/oxidized/model/aosw.rb)
+ * AudioCodes
+   * [AudioCodes](lib/oxdized/model/audiocodes.rb)
+ * Avaya
+   * [VOSS (VSP Operating System Software)](lib/oxidized/model/voss.rb)
+   * [BOSS (Baystack Operating System Software)](lib/oxidized/model/boss.rb)
  * Brocade
    * [FabricOS](lib/oxidized/model/fabricos.rb)
    * [Ironware](lib/oxidized/model/ironware.rb)
@@ -79,23 +91,30 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
  * Ciena
    * [SAOS](lib/oxidized/model/saos.rb)
  * Cisco
+   * [ACSW](lib/oxidized/model/acsw.rb)
    * [AireOS](lib/oxidized/model/aireos.rb)
    * [ASA](lib/oxidized/model/asa.rb)
+   * [AsyncOS](lib/oxidized/model/asyncos.rb)
    * [CatOS](lib/oxidized/model/catos.rb)
    * [IOS](lib/oxidized/model/ios.rb)
    * [IOSXR](lib/oxidized/model/iosxr.rb)
    * [NGA](lib/oxidized/model/cisconga.rb)
    * [NXOS](lib/oxidized/model/nxos.rb)
+   * [SMA](lib/oxidized/model/ciscosma.rb)
    * [SMB (Nikola series)](lib/oxidized/model/ciscosmb.rb)
+   * [UCS](lib/oxidized/model/ucs.rb)
  * Citrix
    * [NetScaler (Virtual Applicance)](lib/oxidized/model/netscaler.rb)
  * Coriant (former Tellabs)
    * [TMOS (8800)](lib/oxidized/model/corianttmos.rb)
    * [8600](lib/oxidized/model/coriant8600.rb)
+   * [Groove](lib/oxidized/model/coriantgroove.rb)
  * Cumulus
    * [Linux](lib/oxidized/model/cumulus.rb)
  * DataCom
    * [DmSwitch 3000](lib/oxidized/model/datacom.rb)
+ * DCN
+   * [DCN](lib/oxidized/model/ios.rb) - Map this to ios.
  * DELL
    * [PowerConnect](lib/oxidized/model/powerconnect.rb)
    * [AOSW](lib/oxidized/model/aosw.rb)
@@ -104,8 +123,9 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
  * Ericsson/Redback
    * [IPOS (former SEOS)](lib/oxidized/model/ipos.rb)
  * Extreme Networks
-   * [XOS](lib/oxidized/model/xos.rb)
+   * [Enterasys](/lib/oxidized/model/enterasys.rb)
    * [WM](lib/oxidized/model/mtrlrfs.rb)
+   * [XOS](lib/oxidized/model/xos.rb)
  * F5
    * [TMOS](lib/oxidized/model/tmos.rb)
  * Force10
@@ -117,10 +137,13 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
    * [PRIMERGY Blade switch 1/10Gbe](lib/oxidized/model/fujitsupy.rb)
  * Hatteras
    * [Hatteras](lib/oxidized/model/hatteras.rb)
+ * Hirschmann
+   * [HiOS](lib/oxidized/model/hirschmann.rb)
  * HP
    * [Comware (HP A-series, H3C, 3Com)](lib/oxidized/model/comware.rb)
    * [Procurve](lib/oxidized/model/procurve.rb)
    * [BladeSystem (Onboard Administrator)](lib/oxidized/model/hpebladesystem.rb)
+   * [MSA](lib/oxidized/model/hpemsa.rb)
  * Huawei
    * [VRP](lib/oxidized/model/vrp.rb)
  * Juniper
@@ -150,12 +173,16 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
    * [PANOS](lib/oxidized/model/panos.rb)
  * [PLANET SG/SGS Switches](lib/oxidized/model/planet.rb)
  * [pfSense](lib/oxidized/model/pfsense.rb)
+ * Radware
+   * [AlteonOS](lib/oxidized/model/alteonos.rb)
  * Quanta
    * [Quanta / VxWorks 6.6 (1.1.0.8)](lib/oxidized/model/quantaos.rb)
  * Siklu
    * [EtherHaul](lib/oxidized/model/siklu.rb)
  * Supermicro
    * [Supermicro](lib/oxidized/model/supermicro.rb)
+ * Symantec
+   * [Blue Coat ProxySG / Security Gateway OS (SGOS)](lib/oxidized/model/sgos.rb)
  * Trango Systems
    * [Trango](lib/oxidized/model/trango.rb)
  * TPLink
@@ -166,6 +193,8 @@ Oxidized is a network device configuration backup tool. It's a RANCID replacemen
    * [EdgeSwitch](lib/oxidized/model/edgeswitch.rb)
  * Watchguard
    * [Fireware OS](lib/oxidized/model/firewareos.rb)
+ * Westell
+   * [Westell 8178G, Westell 8266G](lib/oxidized/model/weos.rb)
  * Zhone
    * [Zhone (OLT and MX)](lib/oxidized/model/zhoneolt.rb)
  * Zyxel
@@ -498,7 +527,7 @@ source:
     adapter: mysql2
     database: oxidized
     table: nodes
-    username: root
+    user: root
     password: rootpass
     map:
       name: ip
@@ -879,6 +908,7 @@ Following configuration keys need to be defined for all hooks:
   * `node_success`: triggered when configuration is succesfully pulled from a node and right before storing the configuration.
   * `node_fail`: triggered after `retries` amount of failed node pulls.
   * `post_store`: triggered after node configuration is stored (this is executed only when the configuration has changed).
+  * `nodes_done`: triggered after finished fetching all nodes.
 
 ## Hook type: exec
 The `exec` hook type allows users to run an arbitrary shell command or a binary when triggered.
@@ -889,6 +919,7 @@ Command is executed with the following environment:
 ```
 OX_EVENT
 OX_NODE_NAME
+OX_NODE_IP
 OX_NODE_FROM
 OX_NODE_MSG
 OX_NODE_GROUP
@@ -1006,6 +1037,9 @@ hooks:
     channel: "#network-changes"
 ```
 
+Note the channel name must be in quotes.
+
+
 # Extra
 
 ## Ubuntu SystemV init setup
@@ -1031,10 +1065,8 @@ chown oxidized:oxidized /var/run/oxidized
 3.)Make oxidized start on boot
 
 ```
-update-rc.d oxidized deafults
+update-rc.d oxidized defaults
 ```
-
-Note the channel name must be in quotes.
 
 # Ruby API
 
@@ -1062,12 +1094,128 @@ The following objects exist in Oxidized.
  * 'sql', 'csv' and 'http' (supports any format with single entry per line, like router.db)
 
 ## Model
- * lists commands to gather from given device model
- * can use 'cmd', 'prompt', 'comment', 'cfg'
- * cfg is executed in input/output/source context
- * cmd is executed in instance of model
- * 'junos', 'ios', 'ironware' and 'powerconnect' implemented
+### At the top level
+A model may use several methods at the top level in the class. `cfg` is
+executed in input/output/source context. `cmd` is executed within an instance
+of the model.
 
+#### `cfg`
+`cfg` may be called with a list of methods (`:ssh`, `:telnet`) and a block with
+zero parameters.  Calling `cfg` registers the given access methods and calling
+it at least once is required for a model to work.
+
+The block may contain commands to change some behaviour for the given methods
+(e.g. calling `post_login` to disable the pager).
+
+#### `cmd`
+Is used to specify commands that should be executed on a model in order to
+gather its configuration. It can be called with:
+
+* Just a string
+* A string and a block
+* `:all` and a block
+* `:secret` and a block
+
+The block takes a single parameter `cfg` containing the output of the command
+being processed.
+
+Calling `cmd` with just a string will emit the output of the command given in
+that string as configuration.
+
+Calling `cmd` with a string and a block will pass the output of the given
+command to the block, then emit its return value (that must be a string) as
+configuration.
+
+Calling `cmd` with `:all` and a block will pass all command output through this
+block before emitting it. This is useful if some cleanup is required of the
+output of all commands.
+
+Calling `cmd` with `:secret` and a block will pass all configuration to the
+given block before emitting it to hide secrets if secret hiding is enabled. The
+block should replace any secrets with `'<hidden>'` and return the resulting
+string.
+
+Execution order is `:all`, `:secret`, and lastly the command specific block, if
+given.
+
+#### `comment`
+Called with a single string containing the string to prepend for comments in
+emitted configuration for this model.
+
+If not specified the default of `'# '` will be used (note the trailing space).
+
+#### `prompt`
+Is called with a regular expression that is used to detect when command output
+ends after a command has been executed.
+
+If not specified, a default of `/^([\w.@-]+[#>]\s?)$/` is used.
+
+#### `expect`
+Called with a regular expression and a block. The block takes two parameters:
+the regular expression, and the data containing the match.
+
+The passed data is replaced by the return value of the block.
+
+`expect` can be used to, for example, strip escape sequences from output before
+it's further processed.
+
+### At the second level
+The following methods are available:
+
+#### `comment`
+Used inside `cmd` invocations. Comments out every line in the passed string and
+returns the result.
+
+#### `password`
+Used inside `cfg` invocations to specify the regular expression used to detect
+the password prompt. If not specified, the default of `/^Password/` is used.
+
+#### `post_login`
+Used inside `cfg` invocations to specify commands to run once Oxidized has
+logged in to the switch. Takes one argument that is either a block (taking zero
+parameters) or a string containing a command to execute.
+
+#### `pre_logout`
+Used to specify commands to run before Oxidized closes the connection to the
+switch. Takes one argument that is either a block (taking zero parameters) or a
+string containing a command to execute.
+
+#### `send`
+Usually used inside `expect` or blocks passed to `post_login`/`pre_logout`.
+Takes a single parameter: a string to be sent to the switch.
+
+# Help Needed
+
+As things stand right now, `oxidized` is maintained by a single person. A great
+many [contributors](https://github.com/ytti/oxidized/graphs/contributors) have
+helped further the software, however contributions are not the same as ongoing
+owner- and maintainership. It appears that many companies use the software to
+manage their network infrastructure, this is great news! But without additional
+help to maintain the software and put out releases, the future of oxidized
+might be less bright. The current pace of development and the much needed
+refactoring simply are not sustainable if they are to be driven by a single
+person.
+
+## Maintainer duties and expectations
+
+* 4 hours per week to perform triage on issues, review pull requests and help answer any questions from users.
+* Above average knowledge of the Ruby programming language.
+* Professional experience with both oxidized and some other config backup tool (like rancid).
+* Ability to keep a cool head, and enjoy interaction with end users! :)
+* A desire and passion to help drive `oxidized` towards its `1.x.x` stage of life
+  * help refactor the code
+  * rework the core infrastructure
+* Permission from your employer to contribute to open source projects
+
+## YES, I WANT TO HELP
+
+Awesome! Simply send an email to Saku Ytti <saku@ytti.fi>.
+
+## Further reading
+
+Brian Anderson (from Rust fame) wrote an [excellent
+post](http://brson.github.io/2017/04/05/minimally-nice-maintainer) on what it
+means to be a maintainer.
 
 # License and Copyright
 
